@@ -1,0 +1,98 @@
+Seminar04 - two group comparisons and data aggregation
+========================================================
+
+Read in the photoRec dataset
+------
+
+```{r}
+prDat <- read.table("../photoRecDataset/dataClean/GSE4051_data.tsv")
+prDes <- readRDS("../photoRecDataset/dataClean/GSE4051_design.rds")
+str(prDat, max.level=0)
+str(prDes)
+```
+
+Two-sample tests - one gene
+-----
+
+Let's extract the data for one gene and put in a data.frame with the experimental information.
+
+```{r}
+set.seed(987)
+(theGene <- sample(1:nrow(prDat), 1))
+
+pDat <- data.frame(prDes, genExp=unlist(prDat[theGene,]))
+str(pDat)
+```
+
+### explore pDat
+
+Always explore the data before plunging into analysis! What are the sample means in the wild type and Nrl knockout groups (yes, we're ignoring developmental stage today)? **aggregate()** and other data aggregation functions are explained below.
+
+```{r}
+aggregate(genExp ~ gType, pDat, FUN=mean)
+```
+
+Let's make a stripplot so we can sanity test our t test result.
+
+```{r}
+library(lattice)
+stripplot(gType ~ genExp, pDat)
+```
+
+### We will do a two-sample t test comparing wild type to the Nrl knockouts.
+
+```{r}
+t.test(genExp ~ gType, pDat)
+```
+
+If we save the t test result, we can inspect what it is.
+
+```{r}
+ttRes <- t.test(genExp ~ gType, pDat)
+str(ttRes)
+```
+
+extract test statistic and p- value
+
+```{r}
+ttRes$statistic
+ttRes$p.value
+```
+
+The t- test with equal variance assumption
+
+```{r}
+ttResEqlVar <- t.test(genExp~gType, pDat, var.equal=T)
+str(ttResEqlVar)
+
+```
+
+the Wilcoxon test for differential expression
+
+```{r}
+wtRes <- wilcox.test(genExp ~ gType, data=pDat)
+str(wtRes)
+```
+
+the Kolmogorov-Smirnov test for differential expression
+
+```{r}
+kstRes  <- ks.test(pDat$genExp[pDat$gType == "wt"], pDat$genExp[pDat$gType=="NrlKO"])
+str(kstRes)
+```
+
+generate a table with test statistic and p values
+
+```{r}
+tests <- list(test_stat=c(ttRes$statistic, ttResEqlVar$statistic, wtRes$statistic, kstRes$statistic), pvalue=c(ttRes$p.value, ttResEqlVar$p.value, wtRes$p.value, kstRes$p.value))
+
+testsDF <- as.data.frame(tests)
+
+str(testsDF)
+names(testsDF)
+rownames(testsDF)  <- c("t.test", "t.test_EV", "wilcox.test", "KS.test")
+testsDF
+
+```
+
+
